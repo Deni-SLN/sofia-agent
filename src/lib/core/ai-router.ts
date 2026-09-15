@@ -2,6 +2,7 @@
 import type { AiProviderConfig, AiTask } from "./ai-types";
 import { budgetStatus, getCached, getRouterState, recordError, recordSuccess, recordUsage, setCached } from "./ai-store";
 import { callAnthropic, callGemini, callOpenAiStyle } from "./ai-providers";
+import { recordAiRequest } from "@/lib/db/ai-ledger";
 export interface AiChatResult {
   reply: string; providerId: string; model: string; cached: boolean;
   latencyMs: number; inTok: number; outTok: number; costUsd: number;
@@ -19,6 +20,7 @@ export async function aiChat(task: AiTask, system: string, user: string, o?: { t
   const hit = getCached(task, system, user);
   if (hit) {
     recordUsage(s, hit.providerId, 0, true);
+    void recordAiRequest({ task, providerId: hit.providerId, model: hit.model, cached: true, inTokens: hit.inTok, outTokens: hit.outTok, costUsd: 0, latencyMs: 0, ok: true }).catch(() => {});
     return { reply: hit.reply, providerId: hit.providerId, model: hit.model, cached: true, latencyMs: 0, inTok: hit.inTok, outTok: hit.outTok, costUsd: 0, fallbacksTried: [] };
   }
   const b = budgetStatus(s);
@@ -45,11 +47,13 @@ export async function aiChat(task: AiTask, system: string, user: string, o?: { t
       recordSuccess(s, p.id, lat);
       recordUsage(s, p.id, cost, false);
       setCached(task, system, user, { reply: res.text, providerId: p.id, providerLabel: p.label, model: p.model, createdAt: Date.now(), inTok: res.inTok, outTok: res.outTok, costUsd: cost });
+      void recordAiRequest({ task, providerId: p.id, model: p.model, cached: false, inTokens: res.inTok, outTokens: res.outTok, costUsd: cost, latencyMs: lat, ok: true }).catch(() => {});
       return { reply: res.text, providerId: p.id, model: p.model, cached: false, latencyMs: lat, inTok: res.inTok, outTok: res.outTok, costUsd: cost, fallbacksTried: tried };
     } catch (e) {
       const lat = Date.now() - t0;
       lastErr = e instanceof Error ? e.message : String(e);
       recordError(s, p.id, lat, lastErr);
+      void recordAiRequest({ task, providerId: p.id, model: p.model, cached: false, inTokens: 0, outTokens: 0, costUsd: 0, latencyMs: lat, ok: false, error: lastErr.slice(0, 200) }).catch(() => {});
       tried.push(p.id);
     }
   }
@@ -123,11 +127,13 @@ export async function aiParallel(task: AiTask, system: string, user: string, cou
       const cost = costOf(p, res.inTok, res.outTok);
       recordSuccess(s, p.id, lat);
       recordUsage(s, p.id, cost, false);
+      void recordAiRequest({ task, providerId: p.id, model: p.model, cached: false, inTokens: res.inTok, outTokens: res.outTok, costUsd: cost, latencyMs: lat, ok: true }).catch(() => {});
       return { providerId: p.id, model: p.model, ok: true, text: res.text, error: null, latencyMs: lat, costUsd: cost, stance: stanceOf(res.text) };
     } catch (e) {
       const lat = Date.now() - t0;
       const msg = e instanceof Error ? e.message : String(e);
       recordError(s, p.id, lat, msg);
+      void recordAiRequest({ task, providerId: p.id, model: p.model, cached: false, inTokens: 0, outTokens: 0, costUsd: 0, latencyMs: lat, ok: false, error: msg.slice(0, 200) }).catch(() => {});
       return { providerId: p.id, model: p.model, ok: false, text: "", error: msg.slice(0, 200), latencyMs: lat, costUsd: 0, stance: "NETRAL" };
     }
   });

@@ -62,6 +62,9 @@ class SofiaEngine {
     for (const a of s.agents) updateAgent(a.name, { status: "IDLE" });
     pushEvent("INFO", "ENGINE", "SOFIA RUNNING — loop otonom aktif");
     pushNotification("SYSTEM", "INFO", "Engine mulai", `SOFIA running (${mode}) — loop otonom aktif`);
+    void import("@/lib/db/audit-repo")
+      .then((m) => m.writeAudit({ event: "TRADING_STARTED", fields: { mode } }))
+      .catch(() => {});
 
     this.timer = setInterval(() => void this.cycle(), s.riskConfig.cycleIntervalMs);
     void this.cycle();
@@ -77,6 +80,9 @@ class SofiaEngine {
       s.engineState = "STOPPED";
       pushEvent("INFO", "ENGINE", `Engine dihentikan (${reason})`);
       pushNotification("SYSTEM", "INFO", "Engine dihentikan", reason);
+      void import("@/lib/db/audit-repo")
+        .then((m) => m.writeAudit({ event: "TRADING_STOPPED", fields: { reason } }))
+        .catch(() => {});
     }
     for (const a of s.agents) updateAgent(a.name, { status: "OFFLINE" });
   }

@@ -1,15 +1,16 @@
-// SOFIA 2.0 — PostgreSQL contract (TASK-002 / PRD §39, §57).
-// Fase fondasi: hanya cek konfigurasi DATABASE_URL (tanpa driver).
-// Migrasi + koneksi nyata di TASK-003. Supabase V1 tetap jalan.
+// SOFIA 2.0 — PostgreSQL contract (TASK-003 / PRD §39, §57).
+// Health check LIVE: SELECT 1 via pool. Tanpa DATABASE_URL →
+// "unconfigured"; query gagal → "offline". Supabase V1 tetap jalan.
 import type { ServiceCheckResult, ServiceClient } from "./types";
-import { getServerConfig } from "@/lib/config/server";
+import { checkDb, isDbConfigured } from "@/lib/db/pool";
 
 export class PostgresClient implements ServiceClient {
   readonly name = "database";
   async check(): Promise<ServiceCheckResult> {
-    const cfg = getServerConfig();
-    if (!cfg.postgres.configured)
-      return { status: "unconfigured", latencyMs: null, detail: "DATABASE_URL belum dikonfigurasi (migrasi TASK-003)" };
-    return { status: "degraded", latencyMs: null, detail: "DATABASE_URL terkonfigurasi; koneksi live di TASK-003" };
+    if (!isDbConfigured())
+      return { status: "unconfigured", latencyMs: null, detail: "DATABASE_URL belum dikonfigurasi" };
+    const r = await checkDb();
+    if (r.ok) return { status: "online", latencyMs: r.latencyMs, detail: "PostgreSQL reachable (SELECT 1)" };
+    return { status: "offline", latencyMs: r.latencyMs, detail: r.detail || "PostgreSQL tidak reachable" };
   }
 }

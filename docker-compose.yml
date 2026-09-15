@@ -1,0 +1,65 @@
+# ============================================================
+# SOFIA 2.0 — Docker Compose (TASK-003 / PRD §58)
+# Core stack SAJA: SOFIA app + PostgreSQL + Redis.
+# Paperclip/Hermes/9Router/n8n TIDAK dibundle (§58) — SOFIA
+# berkomunikasi dengan mereka via API (env di .env.local).
+# Cara pakai: docker compose up -d --build
+# ============================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sofia-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sofia}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sofia-dev-only}
+      POSTGRES_DB: ${POSTGRES_DB:-sofia}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - sofia-pgdata:/var/lib/postgresql/data
+      # Migrasi idempotent dijalankan otomatis saat init DB baru:
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sofia} -d ${POSTGRES_DB:-sofia}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: sofia-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - sofia-redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  sofia:
+    build: .
+    container_name: sofia-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${SOFIA_PORT:-3000}:3000"
+    env_file:
+      - .env.local
+    environment:
+      # URL eksternal (mis. Neon) menang bila di-set di .env.local / shell;
+      # fallback: Postgres lokal dari service di atas.
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-sofia}:${POSTGRES_PASSWORD:-sofia-dev-only}@postgres:5432/${POSTGRES_DB:-sofia}}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+
+volumes:
+  sofia-pgdata:
+  sofia-redisdata:

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "db:migrate": "node scripts/db-migrate.mjs",
     "test": "echo \"TASK-016: test runner menyusul — saat ini 0 test file\" && exit 0"
   },
   "dependencies": {
@@ -37,8 +38,10 @@
     "@tanstack/react-query": "^5.101.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "ioredis": "^6.0.0",
     "lucide-react": "^1.27.0",
     "next": "14.2.35",
+    "pg": "^8.23.0",
     "react": "^18",
     "react-dom": "^18",
     "recharts": "^3.10.1",

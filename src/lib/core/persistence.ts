@@ -1,14 +1,18 @@
 // ============================================================
-// SOFIA Trade — Supabase persistence adapter (Fase 6)
-// Best-effort: jika env Supabase belum diset, semua fungsi
-// menjadi no-op agar engine in-memory tetap jalan (dev/demo).
-// Tabel (lihat supabase/schema.sql):
-//   sofia_snapshots(id, payload, updated_at) — 1 baris global
-//   sofia_journal(id, entry) — arsip jurnal per trade
+// SOFIA Trade — Persistence adapter (TASK-003 / PRD §57)
+// ROUTING: DATABASE_URL (Neon/Docker Postgres) ada -> PostgreSQL
+// (snapshot-save/load + journal-repo). Tidak ada -> fallback
+// Supabase V1 (kode lama UTUH, dihapus belakangan setelah data
+// terverifikasi). Dua-duanya gagal -> no-op, engine in-memory
+// tetap jalan (dev/demo).
 // ============================================================
 
 import type { JournalEntry } from "./types";
 import type { SofiaStore } from "./store";
+import { isDbConfigured } from "@/lib/db/pool";
+import { saveSnapshotPg } from "@/lib/db/snapshot-save";
+import { loadSnapshotPg } from "@/lib/db/snapshot-load";
+import { archiveJournalPg } from "@/lib/db/journal-repo";
 
 const SNAPSHOT_ID = "global-v1";
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -52,6 +56,7 @@ export function saveSnapshotDebounced(s: SofiaStore): void {
 }
 
 export async function persistSnapshot(s: SofiaStore): Promise<boolean> {
+  if (isDbConfigured()) return saveSnapshotPg(s);
   if (!envOk()) return false;
   try {
     const sb = await serviceClient();
@@ -94,6 +99,7 @@ export async function persistSnapshot(s: SofiaStore): Promise<boolean> {
 
 /** Muat snapshot terakhir ke store in-memory (dipanggil sekali saat boot). */
 export async function loadSnapshot(s: SofiaStore): Promise<boolean> {
+  if (isDbConfigured()) return loadSnapshotPg(s);
   if (!envOk()) return false;
   try {
     const sb = await serviceClient();
@@ -134,6 +140,10 @@ export async function loadSnapshot(s: SofiaStore): Promise<boolean> {
 
 /** Arsip satu entri jurnal (fire-and-forget). */
 export function archiveJournal(entry: JournalEntry): void {
+  if (isDbConfigured()) {
+    void archiveJournalPg(entry).catch(() => {});
+    return;
+  }
   if (!envOk()) return;
   void (async () => {
     try {
