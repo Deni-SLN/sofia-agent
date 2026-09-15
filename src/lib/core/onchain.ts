@@ -2,10 +2,12 @@
 // SOFIA Trade — On-chain Wallet Analytics (PRD §7.9)
 // Wallet analytics, balances, tx history, whale alert.
 // Tanpa API key: dummy data yang konsisten untuk pengembangan.
+// ------------------------------------------------------------
+// TASK-002 note: file ini dead code (tidak diimpor siapa pun —
+// lihat docs/audit.md §7). Perbaikan di sini MINIMAL hanya agar
+// `next build` lolos lint; penghapusan/relokasi diputuskan di
+// fase Trading Migration (TASK-015) dengan dokumentasi alasan.
 // ============================================================
-
-import type { NextRequest, NextResponse } from "next/server";
-import { getStore } from "@/lib/core/store";
 
 export const dynamic = "force-dynamic";
 
@@ -33,8 +35,12 @@ export interface TxSnapshot {
   gasUsd: string;
 }
 
-function nowIso() {
+function nowIso(): string {
   return new Date().toISOString();
+}
+
+export function lastWalletSnapshotAt(): string {
+  return nowIso();
 }
 
 function dummyWallet(id: string, address: string, label: string, role: WalletEntry["role"], seed: number): WalletEntry {
@@ -56,7 +62,7 @@ function dummyWallet(id: string, address: string, label: string, role: WalletEnt
   };
 }
 
-const DUMMY: WalletEntry[] = [
+export const DUMMY_WALLETS: WalletEntry[] = [
   dummyWallet("wh-1", "0x9aFb...E472", "PAK LURUH ETHEREUM WHALE", "whale", 120),
   dummyWallet("wh-2", "0xd2C1...B901", "GUDANG SOLANA CETAKAN 2022", "whale", 88),
   dummyWallet("ac-1", "0x7f33...A2Cc", "TONTON AKTIF 15-HARI", "active", 14),
