@@ -13,15 +13,16 @@ export async function GET(req: Request) {
   const requestId = req.headers.get("x-request-id") ?? crypto.randomUUID();
   try {
     const services = await checkAllServices();
+    const overall = overallStatus(services);
     const servicesMap: Record<string, string> = {};
     for (const s of services) servicesMap[s.name] = s.status;
     logger.info("health.services", {
       requestId,
-      status: overallStatus(services),
+      status: overall,
       services: servicesMap,
     });
     return NextResponse.json({
-      status: overallStatus(services),
+      status: overall,
       services: servicesMap,
       details: services,
       requestId,

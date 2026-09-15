@@ -1,7 +1,10 @@
 # TASK-003 — PostgreSQL Migration (Neon) — Laporan
 
 **Tanggal:** 2026-09-15 · **PRD:** §39 (data), §40 (Redis), §57 (Supabase→PostgreSQL), §58 (Docker core), §64 (backup)
-**Status:** SELESAI + tervalidasi live. Commit lokal — push ditahan atas permintaan user.
+**Status:** **FOUNDATION selesai** + tervalidasi live. Domain migration penuh PRD
+(portfolio/transactions/backtests/decision_evidence/dll) dibuat pada fase masing-masing
+(TASK-011..015) — disepakati review TASK-003.5. Hardening lanjutan:
+`docs/task-003.5.md`. Commit lokal — push ditahan atas permintaan user.
 
 ## 1. Ringkasan
 

@@ -1,8 +1,14 @@
 # ============================================================
-# SOFIA 2.0 — Docker Compose (TASK-003 / PRD §58)
+# SOFIA 2.0 — Docker Compose (TASK-003 + hardening TASK-003.5 / PRD §58)
 # Core stack SAJA: SOFIA app + PostgreSQL + Redis.
 # Paperclip/Hermes/9Router/n8n TIDAK dibundle (§58) — SOFIA
 # berkomunikasi dengan mereka via API (env di .env.local).
+#
+# DEV vs PRODUKSI (wajib dibaca sebelum deploy):
+# - DEV   : default password "sofia-dev-only", DB/Redis loopback-only.
+# - PRODUKSI: WAJIB override POSTGRES_PASSWORD kuat (tanpa default),
+#   ports DB/Redis dihapus (komunikasi via jaringan internal compose),
+#   SOFIA di-balik reverse proxy TLS. Jangan pernah pakai default ini.
 # Cara pakai: docker compose up -d --build
 # ============================================================
 
@@ -13,10 +19,13 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-sofia}
+      # DEV ONLY. Produksi WAJIB override (lihat header atas).
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sofia-dev-only}
       POSTGRES_DB: ${POSTGRES_DB:-sofia}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      # DEV only (akses DB tools dari host). Bind ke loopback, JANGAN 0.0.0.0.
+      # PRODUKSI: hapus/komentari ports — container cukup 'expose' internal.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - sofia-pgdata:/var/lib/postgresql/data
       # Migrasi idempotent dijalankan otomatis saat init DB baru:
@@ -32,7 +41,9 @@ services:
     container_name: sofia-redis
     restart: unless-stopped
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      # DEV only (opsional). Redis tidak perlu keluar dari jaringan compose.
+      # PRODUKSI: hapus/komentari ports.
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - sofia-redisdata:/data
     healthcheck:

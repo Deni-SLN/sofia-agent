@@ -1,10 +1,18 @@
 // ============================================================
-// SOFIA Trade — Persistence adapter (TASK-003 / PRD §57)
-// ROUTING: DATABASE_URL (Neon/Docker Postgres) ada -> PostgreSQL
-// (snapshot-save/load + journal-repo). Tidak ada -> fallback
-// Supabase V1 (kode lama UTUH, dihapus belakangan setelah data
-// terverifikasi). Dua-duanya gagal -> no-op, engine in-memory
-// tetap jalan (dev/demo).
+// SOFIA Trade — Persistence adapter (TASK-003 + hardening TASK-003.5)
+//
+// SEMANTIK (review TASK-003.5 §7, §13, §14):
+// 1. SINGLE ACTIVE STORE: bila DATABASE_URL (Neon) diset, SEMUA
+//    tulisan ke PostgreSQL — Supabase TIDAK PERNAH ditulis. Bila
+//    DATABASE_URL kosong, Supabase V1 yang aktif. Tidak pernah
+//    keduanya aktif bersamaan -> TIDAK ADA split-brain.
+// 2. Supabase = LEGACY COMPATIBILITY untuk masa migrasi saja,
+//    BUKAN failover/HA. DATABASE_URL gagal -> return false
+//    (engine in-memory jalan), BUKAN failover ke Supabase.
+//    Kode Supabase dihapus belakangan (setelah data terverifikasi,
+//    sebelum/di TASK-017).
+// 3. snapshot save/load = BRIDGE evolusif V1 -> 2.0. Path ke depan:
+//    Domain -> Repository -> PostgreSQL (per fase, tanpa big-bang).
 // ============================================================
 
 import type { JournalEntry } from "./types";

@@ -14,6 +14,31 @@ function warnOnce(msg: string): void {
   console.warn(`[db] ${msg}`);
 }
 
+/**
+ * SSL produksi-aman (hardening TASK-003.5 §10):
+ * - sslmode=disable            -> tanpa TLS
+ * - sslmode=require/verify-*   -> TLS dengan VERIFIKASI SERTIFIKAT ON
+ *   (pg >= 8.11 memperlakukan sslmode=require sebagai verify-full;
+ *   kita TIDAK lagi menurunkan rejectUnauthorized ke false)
+ * - host Neon tanpa sslmode    -> TLS tetap dinyalakan
+ * Dev self-signed (Postgres self-hosted): set eksplisit
+ * PG_SSL_REJECT_UNAUTHORIZED=false — hanya itu jalan pintasnya.
+ */
+function sslFor(url: string): { rejectUnauthorized: boolean } | undefined {
+  let mode = "";
+  try {
+    mode = new URL(url).searchParams.get("sslmode") ?? "";
+  } catch {
+    return undefined; // URL tidak valid — biarkan pool yang melaporkan error
+  }
+  if (mode === "disable") return undefined;
+  const wantsTls =
+    ["require", "prefer", "verify-ca", "verify-full"].includes(mode) ||
+    (!mode && /neon\.tech/i.test(url));
+  if (!wantsTls) return undefined;
+  return { rejectUnauthorized: process.env.PG_SSL_REJECT_UNAUTHORIZED !== "false" };
+}
+
 export function getPool(): Pool | null {
   if (g.__sofiaPgPool !== undefined) return g.__sofiaPgPool;
   const url = process.env.DATABASE_URL?.trim();
@@ -27,11 +52,7 @@ export function getPool(): Pool | null {
       max: Number(process.env.PG_POOL_MAX || 5),
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 5_000,
-      // Neon pooler & endpoint TLS (sslmode=require) butuh ssl eksplisit.
-      // Postgres lokal (docker compose) tanpa TLS tetap jalan (undefined).
-      ssl: /sslmode=(require|verify)|neon\.tech/i.test(url)
-        ? { rejectUnauthorized: false }
-        : undefined,
+      ssl: sslFor(url),
     });
     pool.on("error", (err) => console.warn(`[db] pool error: ${String(err?.message || err)}`));
     g.__sofiaPgPool = pool;

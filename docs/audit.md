@@ -6,6 +6,10 @@
 **Source PRD:** `docs/PRD-SOFIA-2.0.md` (SOFIA 2.0)
 **Scope of this audit:** read-only. No application code was modified for this report.
 
+> **CATATAN (TASK-003.5):** dokumen ini adalah **BASELINE audit V1** — bukan kondisi
+> terkini repository (TASK-002/003 sudah diterapkan setelah audit ini). Kondisi sekarang:
+> `docs/current-architecture.md`.
+
 ---
 
 ## 0. Executive Summary

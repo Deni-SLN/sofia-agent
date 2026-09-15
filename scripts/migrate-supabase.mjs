@@ -42,10 +42,19 @@ if (!SB_URL || !SB_KEY) {
 
 const { createClient } = await import("@supabase/supabase-js");
 const sb = createClient(SB_URL, SB_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
-const needsSsl = /sslmode=(require|verify)|neon\.tech/i.test(url);
+const needsSsl = (() => {
+  let mode = "";
+  try { mode = new URL(url).searchParams.get("sslmode") ?? ""; } catch { /* biarkan pool */ }
+  if (mode === "disable") return false;
+  return ["require", "prefer", "verify-ca", "verify-full"].includes(mode) || (!mode && /neon\.tech/i.test(url));
+})();
+// TASK-003.5: verifikasi sertifikat ON by default (produksi-aman).
+// Dev self-signed: PG_SSL_REJECT_UNAUTHORIZED=false secara eksplisit.
+const rejectUnauthorized =
+  (process.env.PG_SSL_REJECT_UNAUTHORIZED ?? env.PG_SSL_REJECT_UNAUTHORIZED ?? "true") !== "false";
 const pool = new pg.Pool({
   connectionString: url, max: 2, connectionTimeoutMillis: 15000,
-  ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
+  ssl: needsSsl ? { rejectUnauthorized } : undefined,
 });
 
 try {
