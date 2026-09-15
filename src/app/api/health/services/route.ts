@@ -4,7 +4,7 @@
 // n8n, database, redis. Selalu 200 agar dashboard degradasi
 // graceful (§63): tiap layanan yang mati hanya tampil offline.
 import { NextResponse } from "next/server";
-import { checkAllServices, overallStatus } from "@/lib/services/registry";
+import { checkAllServices, overallStatus, systemHealth } from "@/lib/services/registry";
 import { logger } from "@/lib/core/logger";
 
 export const dynamic = "force-dynamic";
@@ -14,15 +14,18 @@ export async function GET(req: Request) {
   try {
     const services = await checkAllServices();
     const overall = overallStatus(services);
+    const system = systemHealth(services);
     const servicesMap: Record<string, string> = {};
     for (const s of services) servicesMap[s.name] = s.status;
     logger.info("health.services", {
       requestId,
       status: overall,
+      system,
       services: servicesMap,
     });
     return NextResponse.json({
-      status: overall,
+      status: overall, // dependency readiness (critical+required)
+      system, // system health (critical saja) — dashboard: "SOFIA SYSTEM"
       services: servicesMap,
       details: services,
       requestId,

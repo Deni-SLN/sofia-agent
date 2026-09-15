@@ -28,8 +28,10 @@ services:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - sofia-pgdata:/var/lib/postgresql/data
-      # Migrasi idempotent dijalankan otomatis saat init DB baru:
-      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+      # TASK-003.6: TIDAK ADA auto-migration via /docker-entrypoint-initdb.d.
+      # SATU mekanisme kanonik: `npm run db:migrate` (scripts/db-migrate.mjs),
+      # tercatat di schema_migrations. Urutan deploy: postgres healthy ->
+      # db:migrate -> app start. Jangan tambahkan mount migrations di sini.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sofia} -d ${POSTGRES_DB:-sofia}"]
       interval: 10s

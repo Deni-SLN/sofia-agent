@@ -67,6 +67,21 @@ export async function checkAllServices(): Promise<ServiceHealth[]> {
 export type OverallHealth = "healthy" | "degraded" | "down";
 
 /**
+ * SYSTEM HEALTH ≠ DEPENDENCY READINESS (TASK-003.6):
+ * - systemHealth(): apakah server SOFIA sendiri sehat — HANYA tier critical.
+ *   Contoh: DB online + Paperclip/9Router belum dikonfigurasi → system
+ *   "healthy" (server OK), meski kesiapan fitur belum penuh.
+ * - overallStatus(): kesiapan dependensi (critical+required) — dipakai
+ *   untuk daftar capability, BUKAN indikator "server rusak".
+ */
+export function systemHealth(services: ServiceHealth[]): OverallHealth {
+  const critical = services.filter((s) => (s.tier ?? "required") === "critical");
+  if (critical.some((s) => s.status === "offline")) return "down";
+  if (critical.some((s) => s.status === "unconfigured" || s.status === "degraded")) return "degraded";
+  return "healthy";
+}
+
+/**
  * Status agregat BERDASARKAN TIER (bukan "semua layanan"):
  * - critical offline               -> "down"
  * - required offline/unconfigured  -> "degraded" (kapabilitas hilang — jujur)

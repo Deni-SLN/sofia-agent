@@ -9,7 +9,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "db:migrate": "node scripts/db-migrate.mjs",
-    "test": "echo \"TASK-016: test runner menyusul — saat ini 0 test file\" && exit 0"
+    "test": "echo \"TEST SUITE: NOT IMPLEMENTED (TASK-016) — 0 test file; hasil ini BUKAN tests PASS\" && exit 0"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.20",

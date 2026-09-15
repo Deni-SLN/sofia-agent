@@ -50,18 +50,23 @@ src/lib/config/*        ← env server-only terpusat (tanpa NEXT_PUBLIC secret)
   (portfolio/transactions/backtests/decision_evidence/dll) dibuat pada
   fase masing-masing (TASK-011..015) — TASK-003 = fondasi.
 
-## 4. Health semantics (/api/health/services)
+## 4. Health semantics (/api/health/services) — DUA KONSEP (TASK-003.6)
 
-| Tier | Layanan | Efek ke overall |
+**System health ≠ Dependency readiness.**
+
+| Field | Arti | Dihitung dari |
 |---|---|---|
-| critical | database | offline → `down` |
-| required | paperclip, hermes, router | offline/unconfigured → `degraded` |
-| optional | openrouter, local_llm, n8n, redis | tidak memengaruhi |
+| `system` | Apakah server SOFIA sendiri sehat | Tier `critical` saja |
+| `status` | Kesiapan dependensi/capability | Tier `critical` + `required` |
 
-- Status `pending` = integrasi belum dilakukan (Hermes s/d TASK-005) — netral,
-  tidak memalsukan health.
-- Saat ini overall `degraded` karena Paperclip/9Router belum dikonfigurasi;
-  begitu keduanya terisi → `healthy` walau Local LLM/n8n kosong.
+- `system=healthy` walaupun Paperclip/9Router sengaja belum dikonfigurasi —
+  server tidak rusak; yang belum siap adalah kapabilitasnya.
+- Tier: `critical` = database (offline → `system=down`);
+  `required` = paperclip, hermes, router (unconfigured → readiness `degraded`);
+  `optional` = openrouter, local_llm, n8n, redis (tidak memengaruhi keduanya).
+- `pending` (Hermes s/d TASK-005) = integrasi belum dilakukan — netral, jujur.
+- Contoh bentuk dashboard (TASK-009):
+  `SYSTEM 🟢 ONLINE` + daftar capability per layanan.
 
 ## 5. Keamanan
 
